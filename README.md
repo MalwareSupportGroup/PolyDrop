@@ -114,4 +114,4 @@ We as the maintainers, are in no way responsible for the misuse or abuse of this
 
 ## EDIT
 
-In case you are seeing all of the default declarations, and wondering wtf guys. There is a reason; this was built to be more moduler for later versions. 
+In case you are seeing all of the default declarations, and wondering wtf guys. There is a reason; this was built to be more moduler for later versions. For now, enjoy the tool and feel free to post issues. They'll be addressed as quickly as possible. 
