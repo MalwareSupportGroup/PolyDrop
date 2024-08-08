@@ -105,6 +105,6 @@ And the total number of vendors that are unable to accurately identify malicious
 - ZoneAlarm by Check Point
 - Zoner
 
-With this in mind, and the absolute shortcomings on identifying PHP based malware we came up with the theory that the 13 identified languages are also an overlook by these vendors, including CrowdStrike, Sentinel1, Palo Alto, Fortinet, etc.
+With this in mind, and the absolute shortcomings on identifying PHP based malware we came up with the theory that the 13 identified languages are also an oversight by these vendors, including CrowdStrike, Sentinel1, Palo Alto, Fortinet, etc.
 We have been able to identify that at the very least Defender considers these obviously malicious payloads as plaintext.
 
