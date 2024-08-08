@@ -1,4 +1,4 @@
-use clap::{Arg,App};
+use clap::{arg, App, Arg};
 struct ArgOptions {
     output: String,
     os: String,
@@ -7,11 +7,22 @@ struct ArgOptions {
     all: bool,
     lhost: String,
     lport: String,
-    url: String
+    url: String,
+    ldl: String,
 }
 
 impl ArgOptions {
-    fn new(otpt: &str, ops: &str, lng: &str, pl: &str, todos: bool, lhst: &str, lprt: &str, rl: &str) -> ArgOptions {
+    fn new(
+        otpt: &str,
+        ops: &str,
+        lng: &str,
+        pl: &str,
+        todos: bool,
+        lhst: &str,
+        lprt: &str,
+        rl: &str,
+        ldl: &str,
+    ) -> ArgOptions {
         ArgOptions {
             output: otpt.to_string(),
             os: ops.to_string(),
@@ -21,6 +32,7 @@ impl ArgOptions {
             lhost: lhst.to_string(),
             lport: lprt.to_string(),
             url: rl.to_string(),
+            ldl: ldl.to_string(),
         }
     }
 }
@@ -30,7 +42,7 @@ pub fn getargs() -> String {
 	.version("0.1.0")
 	.about("Description: BYOSI (Bring-Your-Own-Script-Interpreter) Rapid Payload Deployment")
 	.author("Author: The Malware Support Group")
-    .usage("./polydrop -x <OS-Option> -s <Language> -t <Payload Type> -o <Output filename> -l/--lhost <IP address/Hostname> -p/--lport <Port Number> -u/--url <Remote URL>")
+    .usage("./polydrop -x <OS-Option> -s <Language> -t <Payload Type> -o <Output filename> -l/--lhost <IP address/Hostname> -p/--lport <Port Number> -u/--url <Remote URL> -z/--lang-download <LanguageToolChain>")
 	.args(&[
 		Arg::new("OS-Option")
 			.short('x')
@@ -72,28 +84,70 @@ pub fn getargs() -> String {
             .required(true)
             .takes_value(true)
             .help("Remote URL for Payload Download: <Full webroot path from trusted server. E.g: https://raw.githubusercontent.com/your_account/repo_name/main/>"),
+        Arg::new("LANG_DOWNLOAD")
+            .short('z')
+            .long("--lang-download")
+            .required(false)
+            .takes_value(true)
+            .help("Optional argument for the specific toolchain to download.")
 	]).get_matches();
-    
+
     let allval;
     if args.is_present("All") {
-        let (p,l,t, o, a, lh, lp, url) = (args.value_of("OS-Option").unwrap(),"empty",args.value_of("Payload-Type").unwrap(),args.value_of("Output").unwrap(), args.values_of("All").is_some(),args.value_of("LHOST").unwrap(),args.value_of("LPORT").unwrap(),args.value_of("URL").unwrap());
-        let op = ArgOptions::new(o,p,l,t, a, lh, lp, url);
-        println!("PolyDrop");
-        println!("- BYOSI (Bring-Your-Own-Script-Interpreter) Rapid Payload Deployment");
-        println!("OS: {}\nPayload Type: {}\nOutput: {}\n",op.os,op.payload,op.output);
-        println!("LHOST: {}\nLPORT: {}\nURL: {}\n", op.lhost, op.lport, op.url);
-        println!("All: {}\n", op.all);
+        let (p, l, t, o, a, lh, lp, url) = (
+            args.value_of("OS-Option").unwrap(),
+            "empty",
+            args.value_of("Payload-Type").unwrap(),
+            args.value_of("Output").unwrap(),
+            args.values_of("All").is_some(),
+            args.value_of("LHOST").unwrap(),
+            args.value_of("LPORT").unwrap(),
+            args.value_of("URL").unwrap(),
+        );
+        let op = ArgOptions::new(o, p, l, t, a, lh, lp, url, "");
+        //println!("PolyDrop");
+        //println!("- BYOSI (Bring-Your-Own-Script-Interpreter) Rapid Payload Deployment");
+        //println!(
+        //    "OS: {}\nPayload Type: {}\nOutput: {}\n",
+        //    op.os, op.payload, op.output
+        //);
+        //println!(
+        //    "LHOST: {}\nLPORT: {}\nURL: {}\n",
+        //    op.lhost, op.lport, op.url
+        //);
+        //println!("All: {}\n", op.all);
         allval = "true";
-        return format!("{} {} {} {} {} {} {} {}",op.os,op.lang,op.payload,op.output,allval,op.lhost,op.lport,op.url)
+        return format!(
+            "{} {} {} {} {} {} {} {}",
+            op.os, op.lang, op.payload, op.output, allval, op.lhost, op.lport, op.url
+        );
     } else {
-        let (p,l,t, o, a, lh, lp, url) = (args.value_of("OS-Option").unwrap(),args.value_of("Script-Language").unwrap(),args.value_of("Payload-Type").unwrap(),args.value_of("Output").unwrap(), args.values_of("All").is_some(),args.value_of("LHOST").unwrap(),args.value_of("LPORT").unwrap(),args.value_of("URL").unwrap());
-        let op = ArgOptions::new(o,p,l,t, a, lh, lp, url);
-        println!("PolyDrop");
-        println!("- BYOSI (Bring-Your-Own-Script-Interpreter) Rapid Payload Deployment");
-        println!("OS: {}\nScript Language: {}\nPayload Type: {}\nOutput: {}\n",op.os,op.lang,op.payload,op.output);
-        println!("LHOST: {}\nLPORT: {}\nURL: {}\n", op.lhost, op.lport, op.url);
+        let (p, l, t, o, a, lh, lp, url, ldl) = (
+            args.value_of("OS-Option").unwrap(),
+            args.value_of("Script-Language").unwrap(),
+            args.value_of("Payload-Type").unwrap(),
+            args.value_of("Output").unwrap(),
+            args.values_of("All").is_some(),
+            args.value_of("LHOST").unwrap(),
+            args.value_of("LPORT").unwrap(),
+            args.value_of("URL").unwrap(),
+            args.value_of("LANG_DOWNLOAD").unwrap_or(""),
+        );
+        let op = ArgOptions::new(o, p, l, t, a, lh, lp, url, ldl);
+        //println!("PolyDrop");
+        //println!("- BYOSI (Bring-Your-Own-Script-Interpreter) Rapid Payload Deployment");
+        //println!(
+        //    "OS: {}\nScript Language: {}\nPayload Type: {}\nOutput: {}\nLanguage Toolchain: {}\n",
+        //    op.os, op.lang, op.payload, op.output, op.ldl
+        //);
+        //println!(
+        //    "LHOST: {}\nLPORT: {}\nURL: {}\n",
+        //    op.lhost, op.lport, op.url
+        //);
         allval = "false";
-        return format!("{} {} {} {} {} {} {} {}",op.os,op.lang,op.payload,op.output,allval,op.lhost,op.lport,op.url)
-    }    
-    
+        return format!(
+            "{} {} {} {} {} {} {} {} {}",
+            op.os, op.lang, op.payload, op.output, allval, op.lhost, op.lport, op.url, op.ldl
+        );
+    }
 }
