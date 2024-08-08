@@ -112,3 +112,6 @@ We have been able to identify that at the very least Defender considers these ob
 
 We as the maintainers, are in no way responsible for the misuse or abuse of this product. This was published for legitimate penetration testing/red teaming purposes, and for educational value. Know the applicable laws in your country of residence before using this script, and do not break the law whilst using this. Thank you and have a nice day.
 
+## EDIT
+
+In case you are seeing all of the default declarations, and wondering wtf guys. There is a reason; this was built to be more moduler for later versions. 
