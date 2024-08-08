@@ -108,3 +108,7 @@ And the total number of vendors that are unable to accurately identify malicious
 With this in mind, and the absolute shortcomings on identifying PHP based malware we came up with the theory that the 13 identified languages are also an oversight by these vendors, including CrowdStrike, Sentinel1, Palo Alto, Fortinet, etc.
 We have been able to identify that at the very least Defender considers these obviously malicious payloads as plaintext.
 
+## Disclaimer
+
+We as the maintainers, are in no way responsible for the misuse or abuse of this product. This was published for legitimate penetration testing/red teaming purposes, and for educational value. Know the applicable laws in your country of residence before using this script, and do not break the law whilst using this. Thank you and have a nice day.
+
