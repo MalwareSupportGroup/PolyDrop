@@ -20,7 +20,6 @@ The following langues are wholly ignored by AV vendors including MS-Defender:
 - nodejs
 - bun
 - python
-- rlang
 - fsharp
 - deno
 
